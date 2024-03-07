@@ -3,7 +3,30 @@
 This repo presents a carbon- and cost-aware scheduling framework.
 
 ## Project Structure
-TODO
+```.
+├── LICENSE
+├── README.md
+├── config-GAIA-spot.yaml # Sample Configuration for spot
+├── config-GAIA.yaml #Sample Configuration for cluster
+├── jobs
+│   ├── nbody # Sample MPI Job
+│   └── profiles # Sample Job Profile 
+├── notebooks
+│   ├── evaluation_plot.ipynb
+├── requirements.txt
+└── src
+    ├── carbon.py
+    ├── cluster
+    ├── cluster_traces
+    ├── figure10.sh
+    ├── figure6-7.sh
+    ├── figure8.sh
+    ├── figure9.sh
+    ├── run.py
+    ├── scheduling
+    ├── task.py
+    └── traces
+```
 
 ## Hardware Requirements
 The code do not have any hardware requirements. The AWS tests were executed on c7gn.medium machines.
@@ -98,7 +121,7 @@ Figure 10: Effect of both spot and reserved instances on the carbon savings and 
 ```
 
 ### AWS Parallel Cluster Experiments
-Follow same scripts but add `--cluster-type slurm` flag to each command.
+Follow same scripts but add `--cluster-type slurm` flag to each command and execute GAIA inside the cluster master.
 
 ## Polices Mapping 
 The following tables provides a mapping between policies names and acronyms used in the paper and instructions to run them i.e., the `--scheduling-policy` and `--carbon-policy` flags.
