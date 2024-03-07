@@ -13,8 +13,9 @@ The code do not have any hardware requirements. The AWS tests were executed on c
 The simulation only requires pandas and numpy, while plotting requires seabon and matplotlib. To install requirements
 
 ```sh
-pip3 install -r requiremepip3 install -r requirements.txtnts.txt
+pip3 install -r requirements.txt
 ```
+
 ### AWS ParallelCluster (Slurm) Environment
 [AWS ParallelCluster](https://docs.aws.amazon.com/parallelcluster/latest/ug/install-v3-parallelcluster.html) recommends using a virtual environment.
 
@@ -22,9 +23,23 @@ To start a cluster for the first time follow the instructions  [here](https://do
 ```
 pcluster configure --config config-file.yaml
 ```
+> Creating Our Custom Cluster
 A sample of the full configuration used is in `config-GAIA.yaml` and `config-GAIA-spot.yaml`.
 
+> An Executeble MPI Job
 To create real executable MPI jobs, we built an N-body simulation MPI jobs. Setup and Execution details are available [here](jobs/nbody/README.md).
+
+> Installing PySlurm (needed by GAIA) to communicate with AWS ParallelCluster Scheduler
+
+
+```bash
+export SLURM_INCLUDE_DIR=/opt/slurm/include
+export SLURM_LIB_DIR=/opt/slurm/lib
+
+git clone https://github.com/PySlurm/pyslurm.git && cd pyslurm
+pip install .
+```
+For more details check the [official website](https://pyslurm.github.io/23.2/).
 
 ## Executing Experiment
 The program takes enlisted configurations and simulates the execution of the job.
@@ -84,3 +99,20 @@ Figure 10: Effect of both spot and reserved instances on the carbon savings and 
 
 ### AWS Parallel Cluster Experiments
 Follow same scripts but add `--cluster-type slurm` flag to each command.
+
+## Polices Mapping 
+The following tables provides a mapping between policies names and acronyms used in the paper and instructions to run them i.e., the `--scheduling-policy` and `--carbon-policy` flags.
+
+|Policy| Scheduling Policy| Carbon Policy| 
+|:-:|:-:|:-:|
+|No Jobs Wait (NJW)|carbon|oracle (-w 0)|
+|All Jobs Wait Threshold (AJW-T)|cost|oracle|
+|Wait Awhile|suspend-resume|oracle|
+|Lowest Carbon Slot (LCS)|carbon|lowest|
+|Lowest Carbon Widow (LCS)|carbon|waiting|
+|Lowest Carbon Widow Oracle (LCS*)|carbon|oracle|
+|Carbon Savings per Waiting Time (CST)|carbon|cst_average|
+|Carbon Savings per Waiting Time Oracle (CST*)|carbon|cst_oracle|
+|Reserved First (RF-LCS/CST)| carbon-cost| waiting/cst_average|
+|Spot First (SF-LCS/CST)| carbon-spot| waiting/cst_average|
+|Spot and Reserved Aware (SP-RES-LCS/CST)| carbon-cost-spot | waiting/cst_average|
