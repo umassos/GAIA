@@ -1,18 +1,18 @@
 # Nbody Simulation Using C++
 
 ## Installation 
-```
+```sh
 sudo apt install cmake libopenmpi-dev openmpi-bin
 ```
 ## How to Build
 
-```
+```sh
 cmake CMakeLists.txt
 
 make
 ```
 ## RUN
-```
+```sh
 ./elastic_nbody [OPTIONS]
 
 Options:
@@ -26,18 +26,7 @@ Options:
   -i,--iterations INT         Total number of iterations
 ```
 
-```
+```sh
 mpirun -n 1 ./elastic_nbody -b 1000 -i 5 -c 2
 ```
-Different machines may requires different configurations, you might need `--allow-run-as-root` if you're running inside a container.
-
 The results include the `checkpoint.dat` and `checkpoint_time` and `iteration_time`. The current code don't include power measurements. You can use RAPL or measure utilization for this.
-
-## Running in Docker
-This is the easiest way to run the workload. This can run on any machine.
-```
-sudo docker build -t washraf/nbody .
-# sudo docker push washraf/nbody # If you need it available globally
-docker run -it washraf/nbody
-# mpirun --allow-run-as-root -n 1 ./elastic_nbody -b 1000 -i 5 -c 1
-```
