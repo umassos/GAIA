@@ -18,12 +18,24 @@ class QueueObject:
         return str(self.x)
 
 class SuspendSchedulingPolicy():
+    """A Scheduling Policy that simulates a suspend and resume policy using an optimization approach. 
+    We refer to this policy in the paper as WaitAwhile.
+    """
     def __init__(self, cluster:BaseCluster, carbon_model) -> None:
         self.cluster = cluster
         self.carbon_model: CarbonModel = carbon_model
         self.queue: PriorityQueue = PriorityQueue()
     
     def compute_schedule(self, carbon_trace, task:Task):
+        """Compute Suspend Resume Schedule
+
+        Args:
+            carbon_trace (CarbonModel): Carbon Intensity model
+            task (Task): current task
+
+        Returns:
+            List: execution schedule
+        """
         job_length = task.task_length
         task_schedule = [0] * (task.task_length + task.waiting_time)
         assert len(task_schedule) == carbon_trace.shape[0]
@@ -33,24 +45,16 @@ class SuspendSchedulingPolicy():
                  break
             task_schedule[i] = 1
             job_length -= 1
-             
-        # while job_length>0:
-        #     i = carbon_trace["carbon_intensity_avg"].idxmin()
-        #     slot = i//720
-        #     for j in range(slot*720, (slot+1)*720):
-        #         if job_length<=0:
-        #             break
-                
-        #         task_schedule[j] = 1
-        #         job_length -= 1
-        #         carbon_trace.at[j, 'carbon_intensity_avg'] = 10000
-            
         return task_schedule
 
     def submit(self, current_time: int, task: Task):
+        """Split Task to multiple jobs (suspend-resume) and submit them to GAIA Queue
+
+        Args:
+            current_time (int): time index
+            task (Task): Task
+        """
         try:
-            #c_model = self.carbon_model.subtrace(
-            #    current_time, current_time + task.task_length + task.waiting_time)
             df = self.carbon_model.df[current_time: current_time + task.task_length + task.waiting_time]
             schedule = self.compute_schedule(df.copy().reset_index(), task)
             sub_tasks = []
@@ -81,6 +85,11 @@ class SuspendSchedulingPolicy():
             raise
 
     def execute(self, current_time):
+        """Submit ready job/subjob to the simulated or real cluster queue
+
+        Args:
+            current_time (int): time index
+        """
         queue = PriorityQueue()
         while not self.queue.empty():
             queue_object = self.queue.get()
