@@ -1,0 +1,33 @@
+Region: us-east-1
+Image:
+  Os: ubuntu2004
+HeadNode:
+  InstanceType: c7gn.xlarge
+  Networking:
+    SubnetId: subnet-xxx
+    AdditionalSecurityGroups:
+      - sg-xxxx
+  Ssh:
+    KeyName: walid
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    CustomSlurmSettings:
+      - SchedulerType: sched/builtin
+    ScaledownIdletime: 1
+   Database:
+      Uri: slurm-accounting-cluster.cluster-xxx.us-east-1.rds.amazonaws.com:3306
+      UserName: clusteradmin
+      PasswordSecretArn: arn:aws:secretsmanager:us-east-1:xxx:secret:AccountingClusterAdminSecre-xxxx
+  SlurmQueues:
+  - Name: queue1
+    ComputeResources:
+    - Name: c7gn
+      Instances:
+      - InstanceType: c7gn.medium
+      MinCount: 0
+      MaxCount: 150
+    Networking:
+      SubnetIds:
+      - subnet-xxxx
+  
