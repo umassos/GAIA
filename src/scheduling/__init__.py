@@ -30,6 +30,12 @@ def create_scheduler(cluster: BaseCluster, scheduling_policy: str, carbon_policy
     elif scheduling_policy == "cost":
         return SchedulingPolicy(cluster, carbon_model, start_time_policy, False, True, False)
     elif scheduling_policy == "suspend-resume":
-        return SuspendSchedulingPolicy(cluster, carbon_model)
+        return SuspendSchedulingPolicy(cluster, carbon_model, optimal=True)
+    elif scheduling_policy == "suspend-resume-spot":
+        return SuspendSchedulingPolicy(cluster, carbon_model, optimal=True)
+    elif scheduling_policy == "suspend-resume-threshold":
+        return SuspendSchedulingPolicy(cluster, carbon_model, optimal=False)
+    elif scheduling_policy == "suspend-resume-spot-threshold":
+        return SuspendSchedulingPolicy(cluster, carbon_model, optimal=False)
     else:
         raise Exception("Unknown Experiment Type")

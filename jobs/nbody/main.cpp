@@ -359,21 +359,21 @@ int main(int argc, char *argv[])
 			cout << "Iteration: " << i;
 			cout << " Time [s]: " << stop - start << endl;
 		}
-		if (i % checkpoint_interval == 0)
-		{
-			if (rank == 0)
-			{
-				cout << "checkpointing" << endl;
-			}
-			double start = MPI_Wtime();
-			if (checkpoint_state(local, incoming, rank, size, node_max, total_bodies, i, results_folder))
-			{
-				cout << "Aborting Program" << endl;
-				MPI_Abort(MPI_COMM_WORLD, 1);
-			}
-			double stop = MPI_Wtime();
-			checkpoint_time.push_back(stop - start);
-		}
+		// if (i % checkpoint_interval == 0)
+		// {
+		// 	if (rank == 0)
+		// 	{
+		// 		cout << "checkpointing" << endl;
+		// 	}
+		// 	double start = MPI_Wtime();
+		// 	if (checkpoint_state(local, incoming, rank, size, node_max, total_bodies, i, results_folder))
+		// 	{
+		// 		cout << "Aborting Program" << endl;
+		// 		MPI_Abort(MPI_COMM_WORLD, 1);
+		// 	}
+		// 	double stop = MPI_Wtime();
+		// 	checkpoint_time.push_back(stop - start);
+		// }
 	}
 
 	if (rank == 0)

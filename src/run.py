@@ -175,13 +175,13 @@ def main():
         "-w",
         "--waiting-times",
         type=str,
-        default="0x0",
+        default="6x24",
         dest="waiting_times_str",
         help="Waiting times per queue `x` separated",
     )
     parser.add_argument(
         "--scheduling-policy",
-        default="carbon",
+        default="suspend-resume-spot-threshold",
         dest="scheduling_policy",
         choices=[
             "carbon",
@@ -190,6 +190,9 @@ def main():
             "carbon-cost-spot",
             "cost",
             "suspend-resume",
+            "suspend-resume-spot",
+            "suspend-resume-threshold",
+            "suspend-resume-spot-threshold",
         ],
     )
     parser.add_argument(

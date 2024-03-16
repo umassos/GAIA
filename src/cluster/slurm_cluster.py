@@ -14,19 +14,28 @@ from collections import namedtuple
 from datetime import datetime
 
 TResult = namedtuple(
-    "TResult", "jobname submit start end elapsed req_cpus state_str exitcode nodes partition")
+    "TResult",
+    "jobname submit start end elapsed req_cpus state_str exitcode nodes partition",
+)
 
 NResult = namedtuple("NResult", "node_name cpus coes partitions state")
-KNOWN_STATES = ["IDLE+CLOUD", "IDLE!+CLOUD", "IDLE#+CLOUD", "IDLE+CLOUD+POWER", "IDLE+CLOUD+POWERING_DOWN", "IDLE+CLOUD+COMPLETING",
-                "ALLOCATED+CLOUD", "ALLOCATED#+CLOUD", "ALLOCATED+CLOUD+POWER"]
+KNOWN_STATES = [
+    "IDLE+CLOUD",
+    "IDLE!+CLOUD",
+    "IDLE#+CLOUD",
+    "IDLE+CLOUD+POWER",
+    "IDLE+CLOUD+POWERING_DOWN",
+    "IDLE+CLOUD+COMPLETING",
+    "ALLOCATED+CLOUD",
+    "ALLOCATED#+CLOUD",
+    "ALLOCATED+CLOUD+POWER",
+]
 
 
 def get_final_tasks(cluster_partition, start_ts) -> List[TResult]:
     tresults = []
     try:
-        start_time = datetime.utcfromtimestamp(start_ts).strftime(
-            "%Y-%m-%dT00:00:00"
-        )
+        start_time = datetime.utcfromtimestamp(start_ts).strftime("%Y-%m-%dT00:00:00")
         jobs = pyslurm.slurmdb_jobs()
         jobs_dict = jobs.get(
             starttime=start_time.encode("utf-8"),
@@ -43,13 +52,13 @@ def get_final_tasks(cluster_partition, start_ts) -> List[TResult]:
                     state_str=job_detail["state_str"],
                     exitcode=job_detail["exitcode"],
                     nodes=job_detail["nodes"],
-                    partition = job_detail["partition"]
+                    partition=job_detail["partition"],
                 )
                 if cluster_partition not in job_detail["partition"]:
                     continue
                 if tresult.submit < -1:
                     continue
-                #assert tresult.state_str == "COMPLETED" or tresult.state_str == "TIMEOUT"
+                # assert tresult.state_str == "COMPLETED" or tresult.state_str == "TIMEOUT"
                 tresults.append(tresult)
             return tresults
         else:
@@ -60,9 +69,20 @@ def get_final_tasks(cluster_partition, start_ts) -> List[TResult]:
 
 
 class SlurmCluster(BaseCluster):
-    def __init__(self, reserved_instances: int, carbon_model: CarbonModel, experiment_name: str, cluster_partition: str, allow_spot) -> None:
-        super().__init__(reserved_instances=reserved_instances,
-                         carbon_model=carbon_model, experiment_name=experiment_name, allow_spot=allow_spot)
+    def __init__(
+        self,
+        reserved_instances: int,
+        carbon_model: CarbonModel,
+        experiment_name: str,
+        cluster_partition: str,
+        allow_spot,
+    ) -> None:
+        super().__init__(
+            reserved_instances=reserved_instances,
+            carbon_model=carbon_model,
+            experiment_name=experiment_name,
+            allow_spot=allow_spot,
+        )
         self.experiment_start = time.time()
         self.last_sleep = time.time()
         self.cluster_partition = cluster_partition
@@ -71,7 +91,7 @@ class SlurmCluster(BaseCluster):
         self.slurmMonitor: SlurmMonitor = SlurmMonitor(self)
         self.slurmMonitor.start()
 
-    def submit(self, current_time, task: Task):        
+    def submit(self, current_time, task: Task):
         try:
             df = pd.read_csv("jobs/profiles/nbody100k.csv")
             iter_time = df[df["nodes"] == task.CPUs]["iteration_time"].mean()
@@ -79,30 +99,43 @@ class SlurmCluster(BaseCluster):
             minutes = round(iters * iter_time / 60)
             print(f"Expected time is:{minutes} minutes")
             c_model = self.carbon_model.subtrace(
-                current_time, current_time + max(task.task_length, task.expected_time) + 1)
+                current_time,
+                current_time + max(task.task_length, task.expected_time) + 1,
+            )
             schedule = compute_carbon_consumption(task, 0, c_model)
             if self.allow_spot and task.task_length_class == "0-2":
-                partitions = [self.cluster_partition+"spot"]
-                reserved=0
+                partitions = [self.cluster_partition + "spot"]
+                reserved = 0
                 task.reserved = reserved
-                self.log_task(current_time, task, task.CPUs * task.task_length * self.spot_cost,
-                          schedule.carbon_cost)
+                self.log_task(
+                    current_time,
+                    task,
+                    task.CPUs * task.task_length * self.spot_cost,
+                    schedule.carbon_cost,
+                )
             else:
-                partitions = [self.cluster_partition]    
+                partitions = [self.cluster_partition]
                 if self.available_reserved_instances >= task.CPUs:
                     on_demand = 0
                     reserved = task.CPUs
-                elif self.available_reserved_instances < task.CPUs and self.available_reserved_instances > 0:
+                elif (
+                    self.available_reserved_instances < task.CPUs
+                    and self.available_reserved_instances > 0
+                ):
                     on_demand = task.CPUs - self.available_reserved_instances
-                    reserved  = self.available_reserved_instances
+                    reserved = self.available_reserved_instances
                 else:
                     on_demand = task.CPUs
                     reserved = 0
                 task.reserved = reserved
                 self.available_reserved_instances -= reserved
-                self.log_task(current_time, task, on_demand * task.task_length * self.on_demand_cost,
-                          schedule.carbon_cost)
-            
+                self.log_task(
+                    current_time,
+                    task,
+                    on_demand * task.task_length * self.on_demand_cost,
+                    schedule.carbon_cost,
+                )
+
             name = f"{task.ID}-{self.experiment_name}"
             self.task_dict[name] = task
             print(f"Submiting {name} for {task.CPUs} CPUs and {reserved} reserved")
@@ -116,7 +149,7 @@ class SlurmCluster(BaseCluster):
                 time_limit=minutes,
             )
             job_id = desc.submit()
-            
+
         except ValueError as value_error:
             print(f"Job query failed - {value_error.args[0]}")
             sys.exit(1)
@@ -124,56 +157,153 @@ class SlurmCluster(BaseCluster):
     def refresh_data(self, current_time):
         return
 
-    def collect_slurm_results(self, cluster_type: str, scheduling_policy, carbon_policy, carbon_trace, task_trace, waiting_times_str):
+    def collect_slurm_results(
+        self,
+        cluster_type: str,
+        scheduling_policy,
+        carbon_policy,
+        carbon_trace,
+        task_trace,
+        waiting_times_str,
+    ):
         self.slurmMonitor.started = False
-        tresults = get_final_tasks(
-            self.cluster_partition, self.experiment_start)
+        tresults = get_final_tasks(self.cluster_partition, self.experiment_start)
         real_details = []
         for tresult in tresults:
             task = self.task_dict[tresult.jobname]
             waiting_time = max(tresult.submit - task.arrival_time, 0)
             self.max_time = max(self.max_time, tresult.start)
 
-            execution_carbon = self.carbon_model.df["carbon_intensity_avg"][tresult.start:tresult.end]
-            run_carbon = execution_carbon.sum() * tresult.req_cpus  # 1 watt per core for now
-            execution_carbon = self.carbon_model.df["carbon_intensity_avg"][tresult.submit:tresult.end]
-            total_carbon = execution_carbon.sum() * tresult.req_cpus  # 1 watt per core for now
-            
+            execution_carbon = self.carbon_model.df["carbon_intensity_avg"][
+                tresult.start : tresult.end
+            ]
+            run_carbon = (
+                execution_carbon.sum() * tresult.req_cpus
+            )  # 1 watt per core for now
+            execution_carbon = self.carbon_model.df["carbon_intensity_avg"][
+                tresult.submit : tresult.end
+            ]
+            total_carbon = (
+                execution_carbon.sum() * tresult.req_cpus
+            )  # 1 watt per core for now
+
             if "spot" in tresult.partition:
                 assert task.reserved == 0
                 run_dollar_cost = tresult.elapsed * self.spot_cost * tresult.req_cpus
-                total_dollar_cost = (tresult.end - tresult.submit) * self.spot_cost * tresult.req_cpus
+                total_dollar_cost = (
+                    (tresult.end - tresult.submit) * self.spot_cost * tresult.req_cpus
+                )
             else:
-                run_dollar_cost = tresult.elapsed * self.on_demand_cost * (tresult.req_cpus - task.reserved)
-                total_dollar_cost = (tresult.end - tresult.submit) * self.on_demand_cost * (tresult.req_cpus - task.reserved)
-            
+                run_dollar_cost = (
+                    tresult.elapsed
+                    * self.on_demand_cost
+                    * (tresult.req_cpus - task.reserved)
+                )
+                total_dollar_cost = (
+                    (tresult.end - tresult.submit)
+                    * self.on_demand_cost
+                    * (tresult.req_cpus - task.reserved)
+                )
+
             real_details.append(
-                [tresult.jobname, task.arrival_time, task.task_length, tresult.req_cpus, task.task_length_class,
-                 task.CPUs_class, run_carbon, total_carbon, run_dollar_cost, total_dollar_cost, tresult.submit, tresult.start, waiting_time, tresult.end, tresult.state_str])
-        reserved_cost = self.total_reserved_instances * \
-            self.reserved_discount_rate * self.max_time * self.on_demand_cost
+                [
+                    tresult.jobname,
+                    task.arrival_time,
+                    task.task_length,
+                    tresult.req_cpus,
+                    task.task_length_class,
+                    task.CPUs_class,
+                    run_carbon,
+                    total_carbon,
+                    run_dollar_cost,
+                    total_dollar_cost,
+                    tresult.submit,
+                    tresult.start,
+                    waiting_time,
+                    tresult.end,
+                    tresult.state_str,
+                ]
+            )
+        reserved_cost = (
+            self.total_reserved_instances
+            * self.reserved_discount_rate
+            * self.max_time
+            * self.on_demand_cost
+        )
         real_details.append(
-            [-1, 0, 0, 0, 0, 0, 0, 0, reserved_cost, reserved_cost, 0, 0, 0, 0, 0])
-        df = pd.DataFrame(real_details, columns=[
-            "ID", "arrival_time", "length", "cpus", "length_class", "resource_class", "carbon_cost", "total_carbon_cost", "dollar_cost", "total_dollar_cost", "submit_time", "start_time", "waiting_time", "exit_time", "reason"])
+            [-1, 0, 0, 0, 0, 0, 0, 0, reserved_cost, reserved_cost, 0, 0, 0, 0, 0]
+        )
+        df = pd.DataFrame(
+            real_details,
+            columns=[
+                "ID",
+                "arrival_time",
+                "length",
+                "cpus",
+                "length_class",
+                "resource_class",
+                "carbon_cost",
+                "total_carbon_cost",
+                "dollar_cost",
+                "total_dollar_cost",
+                "submit_time",
+                "start_time",
+                "waiting_time",
+                "exit_time",
+                "reason",
+            ],
+        )
 
         os.makedirs(f"results/{cluster_type}/{task_trace}/", exist_ok=True)
         file_name = f"results/{cluster_type}/{task_trace}/slurm-details-{scheduling_policy}-{self.carbon_model.carbon_start_index}-{carbon_policy}-{carbon_trace}-{self.total_reserved_instances}-{waiting_times_str}.csv"
         df.to_csv(file_name, index=False)
         self.total_carbon_cost = self.slurmMonitor.total_carbon_cost
         self.total_dollar_cost = self.slurmMonitor.total_dollar_cost
-        self.total_dollar_cost += self.total_reserved_instances * \
-            self.reserved_discount_rate * self.max_time * self.on_demand_cost
-        df = pd.DataFrame(self.slurmMonitor.details, columns=[
-                          "time", "power_on", "power_on_spot", "power_on_total", "reserved_idle", "running_jobs"])
+        self.total_dollar_cost += (
+            self.total_reserved_instances
+            * self.reserved_discount_rate
+            * self.max_time
+            * self.on_demand_cost
+        )
+        df = pd.DataFrame(
+            self.slurmMonitor.details,
+            columns=[
+                "time",
+                "power_on",
+                "power_on_spot",
+                "power_on_total",
+                "reserved_idle",
+                "running_jobs",
+            ],
+        )
         file_name = f"results/slurm/{task_trace}/slurm-runtime-{scheduling_policy}-{self.carbon_model.carbon_start_index}-{carbon_policy}-{carbon_trace}-{self.total_reserved_instances}-{waiting_times_str}.csv"
         df.to_csv(file_name, index=False)
 
-    def save_results(self, cluster_type: str, scheduling_policy, carbon_policy, carbon_trace, task_trace, waiting_times_str):
-        super().save_results(cluster_type, scheduling_policy,
-                             carbon_policy, carbon_trace, task_trace, waiting_times_str)
-        self.collect_slurm_results(cluster_type, scheduling_policy,
-                                   carbon_policy, carbon_trace, task_trace, waiting_times_str)
+    def save_results(
+        self,
+        cluster_type: str,
+        scheduling_policy,
+        carbon_policy,
+        carbon_trace,
+        task_trace,
+        waiting_times_str,
+    ):
+        super().save_results(
+            cluster_type,
+            scheduling_policy,
+            carbon_policy,
+            carbon_trace,
+            task_trace,
+            waiting_times_str,
+        )
+        self.collect_slurm_results(
+            cluster_type,
+            scheduling_policy,
+            carbon_policy,
+            carbon_trace,
+            task_trace,
+            waiting_times_str,
+        )
 
     def sleep(self):
         actual_sleep = max(1 - (time.time() - self.last_sleep), 0)
@@ -205,11 +335,14 @@ class SlurmMonitor(Thread):
                 for k, node_details in new_node_dict.items():
                     if node_details["state"] not in KNOWN_STATES:
                         print(f"Unknown state {node_details['state']}")
-                    if self.cluster.cluster_partition not in node_details["partitions"][0]:
+                    if (
+                        self.cluster.cluster_partition
+                        not in node_details["partitions"][0]
+                    ):
                         continue
                     if "POWER" not in node_details["state"]:
                         if "spot" in node_details["partitions"][0]:
-                            power_on_spot +=1
+                            power_on_spot += 1
                         else:
                             power_on += 1
         except Exception as e:
@@ -220,9 +353,9 @@ class SlurmMonitor(Thread):
         running = 0
         reserved = self.cluster.total_reserved_instances
         try:
-            start_time = datetime.utcfromtimestamp(self.cluster.experiment_start).strftime(
-                "%Y-%m-%dT00:00:00"
-            )
+            start_time = datetime.utcfromtimestamp(
+                self.cluster.experiment_start
+            ).strftime("%Y-%m-%dT00:00:00")
             jobs = pyslurm.slurmdb_jobs()
             jobs_dict = jobs.get(
                 starttime=start_time.encode("utf-8"),
@@ -231,13 +364,18 @@ class SlurmMonitor(Thread):
                 for _, job_detail in jobs_dict.items():
                     if self.cluster.cluster_partition not in job_detail["partition"]:
                         continue
-                    submit = int(job_detail["submit"] -
-                                 self.cluster.experiment_start)
+                    submit = int(job_detail["submit"] - self.cluster.experiment_start)
                     if submit < -1:
                         continue
-                    if job_detail["state_str"] not in ["COMPLETED", "TIMEOUT", "FAILED"]:
+                    if job_detail["state_str"] not in [
+                        "COMPLETED",
+                        "TIMEOUT",
+                        "FAILED",
+                    ]:
                         running += 1
-                        reserved -= self.cluster.task_dict[job_detail["jobname"]].reserved
+                        reserved -= self.cluster.task_dict[
+                            job_detail["jobname"]
+                        ].reserved
                 return running, reserved
             else:
                 return 0
@@ -247,22 +385,35 @@ class SlurmMonitor(Thread):
 
     def collect_info(self):
         power_on, power_on_spot = self.node_stats()
-        running_jobs,reserved_idle = self.running_jobs()
+        running_jobs, reserved_idle = self.running_jobs()
         if reserved_idle < 0:
             print(f"How Come? {reserved_idle}")
         execution_carbon = self.cluster.carbon_model.df["carbon_intensity_avg"][
-            self.current_time:self.current_time + self.sleep_time].sum()
-        
+            self.current_time : self.current_time + self.sleep_time
+        ].sum()
+
         self.total_carbon_cost += (power_on + power_on_spot) * execution_carbon
-        self.total_dollar_cost += max(power_on - reserved_idle, 0) * \
-            self.sleep_time * self.cluster.on_demand_cost
-        self.total_dollar_cost += power_on_spot * \
-            self.sleep_time * self.cluster.spot_cost
-        
+        self.total_dollar_cost += (
+            max(power_on - reserved_idle, 0)
+            * self.sleep_time
+            * self.cluster.on_demand_cost
+        )
+        self.total_dollar_cost += (
+            power_on_spot * self.sleep_time * self.cluster.spot_cost
+        )
+
         self.cluster.running_jobs = running_jobs
         self.cluster.available_reserved_instances = reserved_idle
-        self.details.append([self.current_time, power_on,
-                            power_on_spot,power_on_spot+power_on, reserved_idle, running_jobs])
+        self.details.append(
+            [
+                self.current_time,
+                power_on,
+                power_on_spot,
+                power_on_spot + power_on,
+                reserved_idle,
+                running_jobs,
+            ]
+        )
         self.last_sleep = time.time()
 
     def run(self) -> None:
@@ -273,4 +424,3 @@ class SlurmMonitor(Thread):
             self.current_time += self.sleep_time
             actual_sleep = max(self.sleep_time - (time.time() - self.last_sleep), 0)
             time.sleep(actual_sleep)
-            

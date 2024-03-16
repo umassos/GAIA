@@ -5,6 +5,7 @@ from pandas.core.frame import DataFrame
 
 
 class CarbonModel():
+
     def __init__(self, name, df: DataFrame, carbon_start_index, carbon_error) -> None:
         self.name = name
         self.df = df
@@ -19,7 +20,7 @@ class CarbonModel():
         return model
 
     def subtrace(self, start_index, end_index):
-        df = self.df[start_index:start_index + end_index].copy().reset_index()
+        df = self.df[start_index: end_index].copy().reset_index()
         model = CarbonModel(self.name, df,self.carbon_start_index, self.carbon_error)
         return model
     
