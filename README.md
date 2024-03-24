@@ -94,30 +94,30 @@ optional arguments:
   -p CLUSTER_PARTITION, --cluster-partition CLUSTER_PARTITION
 ```
 ### Simulation Execution Examples
-To reproduce Figures 6-10, we provide 4 bash scripts that customizes runs the experiments with the needed configuration. 
+To reproduce Figures 8-12, we provide 4 bash scripts that customizes runs the experiments with the needed configuration. 
 
 We provided a jupyter notebook to plot figures in `notebooks/evaluation_plot.ipynb`.
 
-Figure 6: The effect of different policies and knowledge assumptions.
-Figure 7: The relation between different task length on the carbon savings and savings with respect to aggregate.
+Figure 8: Normalized carbon emissions and waiting times across policies.
+Figure 9: CDF of the normalized total carbon reductions.
 
 ```sh
-./src/figure6-7.sh
+./src/figure8-9.sh
 ```
 
-Figure 8: Normalized Carbon, Cost, and Waiting Time across policies.
-```sh
-./src/figure8.sh
-```
-
-Figure 9: Effect of reserved instances on the carbon savings and cost using a work conserving and carbon-aware scheduling policy.
-```sh
-./src/figure9.sh
-```
-
-Figure 10: Effect of both spot and reserved instances on the carbon savings and cost using multiple policies and configurations.
+Figure 10: Normalized Carbon, Cost, and Waiting Time across policies when using reserved instances.
 ```sh
 ./src/figure10.sh
+```
+
+Figure 11: Effect of reserved instances on the carbon savings and cost using a work conserving and carbon-aware scheduling policy.
+```sh
+./src/figure11.sh
+```
+
+Figure 12: Effect of both spot and reserved instances on the carbon savings and cost using multiple policies and configurations.
+```sh
+./src/figure12.sh
 ```
 
 ### AWS Parallel Cluster Experiments
@@ -130,12 +130,12 @@ The following tables provides a mapping between policies names and acronyms used
 |:-:|:-:|:-:|
 |No Jobs Wait (NJW)|carbon|oracle (-w 0)|
 |All Jobs Wait Threshold (AJW-T)|cost|oracle|
+|Lowest Carbon Slot (Lowest-Slot)|carbon|lowest|
+|Lowest Carbon Widow (Lowest Window)|carbon|waiting|
+|Carbon Savings per Waiting Time (Carbon-Time)|carbon|cst_average|
+|Ecovisor|suspend-resume-threshold|oracle|
 |Wait Awhile|suspend-resume|oracle|
-|Lowest Carbon Slot (LCS)|carbon|lowest|
-|Lowest Carbon Widow (LCS)|carbon|waiting|
-|Lowest Carbon Widow Oracle (LCS*)|carbon|oracle|
-|Carbon Savings per Waiting Time (CST)|carbon|cst_average|
-|Carbon Savings per Waiting Time Oracle (CST*)|carbon|cst_oracle|
-|Reserved First (RF-LCS/CST)| carbon-cost| waiting/cst_average|
-|Spot First (SF-LCS/CST)| carbon-spot| waiting/cst_average|
-|Spot and Reserved Aware (SP-RES-LCS/CST)| carbon-cost-spot | waiting/cst_average|
+|Reserved First + Carbon-Time (Res-First-Carbon-Time)| carbon-cost| cst_average|
+|Spot First + Carbon-Time (Spot-First-Carbon-Time)| carbon-spot| cst_average|
+|Spot First + Ecovisor (Spot-First-Ecovisor)| suspend-resume-spot-threshold| oracle|
+|Spot and Reserved Aware + Carbon Time (SPOT-RES-Carbon-Time)| carbon-cost-spot | cst_average|
